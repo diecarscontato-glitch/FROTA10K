@@ -1,0 +1,483 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+// ==========================================
+// TENANT & AUTH MODELS
+// ==========================================
+
+model Account {
+  id                  String   @id @default(uuid())
+  name                String
+  public_name         String?
+  email               String?
+  phone               String?
+  city                String?
+  state               String?
+  logo                String?
+  operational_profile String?
+  status              String?  @default("ACTIVE")
+  plan_type           String   @default("STARTER")
+  subscription_status String   @default("ACTIVE")
+  next_billing_date   DateTime?
+  payment_config      Json?    // Optional: Stores encrypted API keys for BYOK
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  users                     User[]
+  invites                   Invite[]
+  leads                     Lead[]
+  assets                    Asset[]
+  publications              Publication[]
+  interests                 Interest[]
+  negotiations_as_proponent Negotiation[]
+  tasks                     Task[]
+  notifications             Notification[]
+  import_jobs               ImportJob[]
+  automation_rules          AutomationRule[]
+  audit_logs                AuditLog[]
+  financial_records         FinancialRecord[]
+}
+
+model User {
+  id            String    @id @default(uuid())
+  account_id    String
+  account       Account   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  name          String
+  display_name  String?
+  email         String    @unique
+  password      String?
+  phone         String?
+  avatar        String?
+  role          String    @default("viewer")
+  status        String    @default("ACTIVE")
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  invites_sent          Invite[]
+  owned_leads           Lead[]                 @relation("owned_leads")
+  assigned_leads        Lead[]                 @relation("assigned_leads")
+  analyses              Analysis[]
+  destination_decisions DestinationDecision[]
+  documents_uploaded    Document[]
+  interests             Interest[]
+  negotiation_messages  NegotiationMessage[]
+  publications_created  Publication[]
+  tasks                 Task[]
+  notifications         Notification[]
+  import_jobs           ImportJob[]
+  automation_rules      AutomationRule[]
+  audit_logs            AuditLog[]
+  legal_analyses        LegalAnalysis[]
+}
+
+model Invite {
+  id                 String    @id @default(uuid())
+  account_id         String
+  account            Account   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  invited_name       String?
+  invited_email      String
+  role               String
+  invited_by_user_id String
+  invited_by         User      @relation(fields: [invited_by_user_id], references: [id])
+  status             String    @default("PENDING")
+  sent_at            DateTime  @default(now())
+  accepted_at        DateTime?
+  expires_at         DateTime?
+}
+
+// ==========================================
+// OPERATIONAL MODELS
+// ==========================================
+
+model Lead {
+  id                   String   @id @default(uuid())
+  account_id           String
+  account              Account  @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  name                 String
+  phone                String?
+  city                 String?
+  state                String?
+  profession           String?
+  source               String?
+  owner_user_id        String?
+  owner                User?    @relation("owned_leads", fields: [owner_user_id], references: [id])
+  assigned_to_user_id  String?
+  assigned_to          User?    @relation("assigned_leads", fields: [assigned_to_user_id], references: [id])
+  
+  // Qualification Data
+  vehicle_model        String?
+  vehicle_year         Int?
+  vehicle_plate        String?
+  has_reserve_key      Boolean?
+  has_manual           Boolean?
+  auction_history      String?
+  damages              String?
+  
+  finance_bank                   String?
+  finance_installment_value      Float?
+  finance_total_installments     Int?
+  finance_paid_installments      Int?
+  finance_remaining_installments Int?
+  finance_overdue_installments   Int?
+  finance_outstanding_balance    Float?
+  owner_expectation              Float?
+  urgency                        String?  // LOW, MEDIUM, HIGH
+  
+  status               String   @default("NEW") // Will use the 15 stages list
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  assets Asset[]
+  tasks  Task[]
+}
+
+model Asset {
+  id         String  @id @default(uuid())
+  account_id String
+  account    Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  lead_id    String?
+  lead       Lead?   @relation(fields: [lead_id], references: [id])
+
+  type            String  @default("CAR")
+  brand           String?
+  model           String?
+  version         String?
+  year            Int?
+  plate           String?
+  km              Int?
+  color           String?
+  city            String?
+  state           String?
+  condition       String?
+  estimated_value Float?
+  fipe_value      Float?
+  market_value    Float?
+  rental_eligible Boolean @default(false)
+  status          String  @default("SCREENING")
+  
+  // Logistics/Reception
+  received_at     DateTime?
+  reception_km    Int?
+  tracker_installed Boolean @default(false)
+  insurance_active Boolean @default(false)
+  hygiene_done    Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  financing             Financing?
+  analyses              Analysis[]
+  legal_analysis        LegalAnalysis?
+  destination_decisions DestinationDecision[]
+  documents             Document[]
+  publications          Publication[]
+  tasks                 Task[]
+  financial_records     FinancialRecord[]
+}
+
+model Financing {
+  id                     String   @id @default(uuid())
+  asset_id               String   @unique
+  asset                  Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  bank                   String?
+  installment_value      Float?
+  total_installments     Int?
+  paid_installments      Int?
+  remaining_installments Int?
+  overdue_installments   Int?
+  outstanding_balance    Float?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+}
+
+model Analysis {
+  id              String  @id @default(uuid())
+  asset_id        String
+  asset           Asset   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  analyst_user_id String?
+  analyst         User?   @relation(fields: [analyst_user_id], references: [id])
+
+  structural_score Int?
+  engine_score     Int?
+  paint_score      Int?
+  interior_score   Int?
+  general_notes    String?
+
+  // Financial Analysis Fields
+  total_debt_estimated Float?
+  fipe_comparison_pct  Float?
+  market_comparison_pct Float?
+  rental_potential     Float?
+  estimated_rent       Float?
+  monthly_margin       Float?
+  vacancy_risk         String?
+  operational_cost     Float?
+  bank_profile         String? // NEGOCIAVEL, RUIM, AGRESSIVO, COOPERATIVA
+  
+  recommendation      String?
+  verdict             String?  // APPROVED, NEGOTIATE, REFUSED
+  ready_for_committee Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+}
+
+model DestinationDecision {
+  id                 String  @id @default(uuid())
+  asset_id           String
+  asset              Asset   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  decided_by_user_id String?
+  decided_by         User?   @relation(fields: [decided_by_user_id], references: [id])
+
+  decision      String?
+  justification String?
+  target_value  Float?
+  decided_at    DateTime?
+  next_action   String?
+  created_at    DateTime  @default(now())
+}
+
+model LegalAnalysis {
+  id              String  @id @default(uuid())
+  asset_id        String  @unique
+  asset           Asset   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  analyst_user_id String?
+  analyst         User?   @relation(fields: [analyst_user_id], references: [id])
+
+  // Checklist
+  criminal_records_checked Boolean @default(false)
+  civil_lawsuits_checked   Boolean @default(false)
+  vehicle_restrictions_checked Boolean @default(false)
+  cnh_status_checked       Boolean @default(false)
+  
+  risk_level      String?  // LOW, MEDIUM, HIGH, IMPEDIMENT
+  legal_notes     String?
+  recommendation  String?  // PROCEED, PROCEED_WITH_RESERVATIONS, BLOCK
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+model Document {
+  id                  String   @id @default(uuid())
+  asset_id            String
+  asset               Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  document_type       String
+  filename            String
+  file_url            String
+  visibility          String   @default("PRIVATE")
+  validation_status   String   @default("PENDING")
+  uploaded_by_user_id String?
+  uploaded_by         User?    @relation(fields: [uploaded_by_user_id], references: [id])
+  created_at          DateTime @default(now())
+}
+
+// ==========================================
+// MARKETPLACE MODELS
+// ==========================================
+
+model Publication {
+  id                   String  @id @default(uuid())
+  account_id           String
+  account              Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  asset_id             String
+  asset                Asset   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  published_by_user_id String?
+  published_by         User?   @relation(fields: [published_by_user_id], references: [id])
+
+  title             String?
+  description       String?
+  asking_price      Float?
+  highlight_details String?
+  visibility        String  @default("PUBLIC")
+  status            String  @default("ACTIVE")
+
+  published_at     DateTime?
+  last_activity_at DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  interests    Interest[]
+  negotiations Negotiation[]
+}
+
+model Interest {
+  id             String      @id @default(uuid())
+  publication_id String
+  publication    Publication @relation(fields: [publication_id], references: [id], onDelete: Cascade)
+  account_id     String
+  account        Account     @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  user_id        String
+  user           User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  status         String      @default("PENDING")
+  created_at     DateTime    @default(now())
+}
+
+model Negotiation {
+  id                   String      @id @default(uuid())
+  publication_id       String
+  publication          Publication @relation(fields: [publication_id], references: [id], onDelete: Cascade)
+  proponent_account_id String
+  proponent_account    Account     @relation(fields: [proponent_account_id], references: [id], onDelete: Cascade)
+  proponent_user_id    String?
+  current_value        Float?
+  status               String      @default("OPEN")
+  reserved_until       DateTime?
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+
+  messages NegotiationMessage[]
+}
+
+model NegotiationMessage {
+  id             String      @id @default(uuid())
+  negotiation_id String
+  negotiation    Negotiation @relation(fields: [negotiation_id], references: [id], onDelete: Cascade)
+  user_id        String
+  user           User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  content        String
+  message_type   String      @default("TEXT")
+  proposal_value Float?
+  created_at     DateTime    @default(now())
+}
+
+// ==========================================
+// OPERATIONAL SUPPORT MODELS
+// ==========================================
+
+model Task {
+  id          String    @id @default(uuid())
+  account_id  String
+  account     Account   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  priority    String    @default("MEDIUM")
+  status      String    @default("PENDING")
+  due_date    DateTime?
+  user_id     String?
+  user        User?     @relation(fields: [user_id], references: [id])
+  asset_id    String?
+  asset       Asset?    @relation(fields: [asset_id], references: [id])
+  lead_id     String?
+  lead        Lead?     @relation(fields: [lead_id], references: [id])
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  account_id String? // Optional for system notifications, required for account-specific
+  account    Account? @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  message    String?
+  link       String?
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+}
+
+// ==========================================
+// SYSTEM MODELS (FASE 3+)
+// ==========================================
+
+model Template {
+  id                String   @id @default(uuid())
+  name              String
+  category          String
+  description       String?
+  profile_indicated String?
+  complexity_level  String?
+  config_payload    Json?
+  created_at        DateTime @default(now())
+}
+
+model ImportJob {
+  id                 String    @id @default(uuid())
+  account_id         String
+  account            Account   @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  import_type        String
+  file_name          String
+  file_url           String
+  status             String    @default("PENDING")
+  total_rows         Int       @default(0)
+  valid_rows         Int       @default(0)
+  invalid_rows       Int       @default(0)
+  created_by_user_id String
+  created_by         User      @relation(fields: [created_by_user_id], references: [id], onDelete: Cascade)
+  created_at         DateTime  @default(now())
+  finished_at        DateTime?
+}
+
+model AutomationRule {
+  id                 String   @id @default(uuid())
+  account_id         String
+  account            Account  @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  name               String
+  category           String?
+  trigger_type       String
+  condition_payload  Json?
+  action_payload     Json?
+  status             String   @default("ACTIVE")
+  created_by_user_id String?
+  created_by         User?    @relation(fields: [created_by_user_id], references: [id])
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  executions AutomationExecution[]
+}
+
+model AutomationExecution {
+  id                 String         @id @default(uuid())
+  automation_rule_id String
+  automation_rule    AutomationRule @relation(fields: [automation_rule_id], references: [id], onDelete: Cascade)
+  status             String
+  linked_entity_type String?
+  linked_entity_id   String?
+  result_summary     String?
+  executed_at        DateTime       @default(now())
+}
+
+model AuditLog {
+  id                 String   @id @default(uuid())
+  account_id         String?
+  account            Account? @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  actor_user_id      String?
+  actor              User?    @relation(fields: [actor_user_id], references: [id])
+  actor_type         String   @default("USER")
+  event_type         String
+  target_entity_type String?
+  target_entity_id   String?
+  severity           String   @default("INFO")
+  status             String?
+  summary            String?
+  before_payload     Json?
+  after_payload      Json?
+  created_at         DateTime @default(now())
+}
+
+model FinancialRecord {
+  id          String   @id @default(uuid())
+  account_id  String
+  account     Account  @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  asset_id    String?
+  asset       Asset?   @relation(fields: [asset_id], references: [id])
+  
+  type        String   // INCOME, EXPENSE
+  category    String   // OPERACAO, AQUISICAO, FROTA, QUITACAO
+  description String
+  amount      Float
+  date        DateTime @default(now())
+  
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
