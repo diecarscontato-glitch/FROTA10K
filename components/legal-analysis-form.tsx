@@ -1,81 +1,44 @@
 "use client";
 
 import React, { useState } from "react";
-import { createLegalAnalysis } from "@/app/actions/legal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  ShieldAlert,
-  AlertCircle,
-  CheckCircle2,
-  XOctagon,
-  ShieldCheck,
-  ShieldX,
-  ShieldQuestion,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ShieldAlert, CheckCircle2, FileText, AlertOctagon } from "lucide-react";
+import { saveLegalAnalysis } from "@/app/actions/legal";
 
-interface LegalAnalysisFormProps {
-  asset: any;
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
-
-export function LegalAnalysisForm({ asset, onSuccess, onCancel }: LegalAnalysisFormProps) {
+export function LegalAnalysisForm({ lead, initialData }: { lead: any, initialData?: any }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const existing = asset.legal_analysis;
-
-  const [checks, setChecks] = useState({
-    criminal_records_checked: existing?.criminal_records_checked ?? false,
-    civil_lawsuits_checked: existing?.civil_lawsuits_checked ?? false,
-    vehicle_restrictions_checked: existing?.vehicle_restrictions_checked ?? false,
-    cnh_status_checked: existing?.cnh_status_checked ?? false,
-  });
-
-  const [riskLevel, setRiskLevel] = useState<string>(existing?.risk_level ?? "");
-  const [recommendation, setRecommendation] = useState<string>(existing?.recommendation ?? "");
-  const [notes, setNotes] = useState(existing?.legal_notes ?? "");
-
-  const allChecked = Object.values(checks).every(Boolean);
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
-    if (!allChecked) {
-      setError("Todos os itens do checklist devem ser verificados.");
-      return;
-    }
-    if (!riskLevel) {
-      setError("Selecione o nível de risco.");
-      return;
-    }
-    if (!recommendation) {
-      setError("Selecione um parecer jurídico.");
-      return;
-    }
-
     setLoading(true);
     setError("");
+    setSuccess(false);
+
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      lead_id: lead.id,
+      criminal_records_checked: formData.get("criminal_records_checked") === "on",
+      civil_lawsuits_checked: formData.get("civil_lawsuits_checked") === "on",
+      vehicle_restrictions_checked: formData.get("vehicle_restrictions_checked") === "on",
+      cnh_status_checked: formData.get("cnh_status_checked") === "on",
+      renajud_checked: formData.get("renajud_checked") === "on",
+      risk_level: formData.get("risk_level") as string,
+      recommendation: formData.get("recommendation") as string,
+      legal_notes: formData.get("legal_notes") as string,
+    };
 
     try {
-      await createLegalAnalysis({
-        asset_id: asset.id,
-        ...checks,
-        risk_level: riskLevel,
-        legal_notes: notes,
-        recommendation,
-      });
-      if (onSuccess) onSuccess();
+      await saveLegalAnalysis(data);
+      setSuccess(true);
     } catch (err: any) {
       setError(err.message || "Erro ao salvar análise jurídica");
     } finally {
@@ -83,222 +46,142 @@ export function LegalAnalysisForm({ asset, onSuccess, onCancel }: LegalAnalysisF
     }
   }
 
-  const CheckItem = ({
-    label,
-    description,
-    field,
-    checked,
-  }: {
-    label: string;
-    description: string;
-    field: keyof typeof checks;
-    checked: boolean;
-  }) => (
-    <label className="flex items-start gap-4 p-4 rounded-xl border border-slate-700 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-all group">
-      <div className="pt-0.5">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => setChecks((prev) => ({ ...prev, [field]: e.target.checked }))}
-          className="w-5 h-5 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
-        />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">{label}</p>
-        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{description}</p>
-      </div>
-      {checked ? (
-        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-      ) : (
-        <AlertCircle className="w-5 h-5 text-slate-600 shrink-0 mt-0.5" />
-      )}
-    </label>
-  );
-
-  const riskOptions = [
-    { value: "LOW", label: "Baixo", color: "text-emerald-500", bg: "border-emerald-500/50 bg-emerald-500/5" },
-    { value: "MEDIUM", label: "Médio", color: "text-amber-500", bg: "border-amber-500/50 bg-amber-500/5" },
-    { value: "HIGH", label: "Alto", color: "text-orange-500", bg: "border-orange-500/50 bg-orange-500/5" },
-    { value: "IMPEDIMENT", label: "Impedimento", color: "text-red-500", bg: "border-red-500/50 bg-red-500/5" },
-  ];
-
   return (
-    <Card className="bg-slate-900 border-slate-800 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <CardHeader>
-        <CardTitle className="text-xl text-white flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-violet-500" />
-          Análise Jurídica / Documental
-        </CardTitle>
-        <CardDescription className="text-slate-400">
-          Verifique todos os itens obrigatórios antes de emitir o parecer.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
-          {error && (
-            <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              <AlertCircle className="w-4 h-4 inline mr-2" />
-              {error}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Bloco: Checklist Documental */}
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader>
+            <CardTitle className="text-lg text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              Checklist de Validação
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-3 rounded-md border border-slate-800 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-colors">
+                <input type="checkbox" name="cnh_status_checked" defaultChecked={initialData?.cnh_status_checked} className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-slate-900 bg-slate-900" />
+                <span className="text-sm text-slate-300 font-medium">CNH Válida e Regular</span>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-md border border-slate-800 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-colors">
+                <input type="checkbox" name="criminal_records_checked" defaultChecked={initialData?.criminal_records_checked} className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-slate-900 bg-slate-900" />
+                <span className="text-sm text-slate-300 font-medium">Antecedentes Criminais (Nada Consta)</span>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-md border border-slate-800 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-colors">
+                <input type="checkbox" name="civil_lawsuits_checked" defaultChecked={initialData?.civil_lawsuits_checked} className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-slate-900 bg-slate-900" />
+                <span className="text-sm text-slate-300 font-medium">Processos Cíveis (Busca e Apreensão, etc)</span>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-md border border-slate-800 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-colors">
+                <input type="checkbox" name="vehicle_restrictions_checked" defaultChecked={initialData?.vehicle_restrictions_checked} className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-slate-900 bg-slate-900" />
+                <span className="text-sm text-slate-300 font-medium">Débitos Detran (Multas, IPVA)</span>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 rounded-md border border-amber-500/30 bg-amber-500/10 cursor-pointer hover:bg-amber-500/20 transition-colors">
+                <input type="checkbox" name="renajud_checked" defaultChecked={initialData?.renajud_checked} className="w-4 h-4 rounded border-amber-700 text-amber-600 focus:ring-amber-600 focus:ring-offset-slate-900 bg-slate-900" />
+                <span className="text-sm text-amber-500 font-medium">RENAJUD (Restrição Judicial)</span>
+              </label>
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-          {/* Checklist */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Checklist Obrigatório</h3>
-            <CheckItem
-              label="Antecedentes Criminais"
-              description="Consulta realizada nos sistemas estadual e federal para o proprietário."
-              field="criminal_records_checked"
-              checked={checks.criminal_records_checked}
-            />
-            <CheckItem
-              label="Processos Cíveis"
-              description="Verificação de ações cíveis, execuções fiscais e trabalhistas."
-              field="civil_lawsuits_checked"
-              checked={checks.civil_lawsuits_checked}
-            />
-            <CheckItem
-              label="Restrições Veiculares"
-              description="Consulta RENAJUD, DETRAN e SNG para restrições judiciais, administrativas e financeiras."
-              field="vehicle_restrictions_checked"
-              checked={checks.vehicle_restrictions_checked}
-            />
-            <CheckItem
-              label="Status CNH do Proprietário"
-              description="Validade da CNH, pontuação e processos de suspensão/cassação."
-              field="cnh_status_checked"
-              checked={checks.cnh_status_checked}
-            />
-          </div>
-
-          {/* Progress */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/60 border border-slate-700">
-            <div className="flex-1">
-              <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1.5">
-                <span className="text-slate-400">Progresso</span>
-                <span className={allChecked ? "text-emerald-400" : "text-amber-400"}>
-                  {Object.values(checks).filter(Boolean).length}/4
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500",
-                    allChecked ? "bg-emerald-500" : "bg-amber-500"
-                  )}
-                  style={{ width: `${(Object.values(checks).filter(Boolean).length / 4) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Risk Level */}
-          <div className="space-y-3 pt-4 border-t border-slate-800">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nível de Risco</h3>
-            <div className="grid grid-cols-4 gap-2">
-              {riskOptions.map((opt) => (
-                <label key={opt.value} className="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="risk_level"
-                    value={opt.value}
-                    checked={riskLevel === opt.value}
-                    onChange={(e) => setRiskLevel(e.target.value)}
-                    className="hidden peer"
-                  />
-                  <div
-                    className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center",
-                      riskLevel === opt.value ? opt.bg : "border-slate-700 bg-slate-800/50 hover:bg-slate-800"
-                    )}
-                  >
-                    <span className={cn("text-[10px] font-bold uppercase", opt.color)}>{opt.label}</span>
+        {/* Bloco: Avaliação de Risco */}
+        <Card className="bg-slate-900 border-slate-800 flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-lg text-white flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-orange-500" />
+              Nível de Risco Apurado
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 flex-1 flex flex-col">
+            <div className="grid grid-cols-2 gap-3">
+               <label className="cursor-pointer group">
+                  <input type="radio" name="risk_level" value="BAIXO" className="peer hidden" defaultChecked={initialData?.risk_level === "BAIXO"} />
+                  <div className="p-3 rounded border border-slate-700 bg-slate-800/50 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 text-center transition-all">
+                    <span className="text-xs font-bold text-slate-400 peer-checked:text-emerald-500">Risco BAIXO</span>
                   </div>
-                </label>
-              ))}
+               </label>
+               <label className="cursor-pointer group">
+                  <input type="radio" name="risk_level" value="MEDIO" className="peer hidden" defaultChecked={initialData?.risk_level === "MEDIO"} />
+                  <div className="p-3 rounded border border-slate-700 bg-slate-800/50 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 text-center transition-all">
+                    <span className="text-xs font-bold text-slate-400 peer-checked:text-amber-500">Risco MÉDIO</span>
+                  </div>
+               </label>
+               <label className="cursor-pointer group">
+                  <input type="radio" name="risk_level" value="ALTO" className="peer hidden" defaultChecked={initialData?.risk_level === "ALTO"} />
+                  <div className="p-3 rounded border border-slate-700 bg-slate-800/50 peer-checked:border-orange-500 peer-checked:bg-orange-500/10 text-center transition-all">
+                    <span className="text-xs font-bold text-slate-400 peer-checked:text-orange-500">Risco ALTO</span>
+                  </div>
+               </label>
+               <label className="cursor-pointer group">
+                  <input type="radio" name="risk_level" value="IMPEDIMENTO" className="peer hidden" defaultChecked={initialData?.risk_level === "IMPEDIMENTO"} />
+                  <div className="p-3 rounded border border-slate-700 bg-slate-800/50 peer-checked:border-red-500 peer-checked:bg-red-500/10 text-center transition-all">
+                    <span className="text-xs font-bold text-slate-400 peer-checked:text-red-500 flex items-center justify-center gap-1"><AlertOctagon className="w-3 h-3"/> IMPEDIMENTO</span>
+                  </div>
+               </label>
+            </div>
+
+            <div className="space-y-2 flex-1">
+              <Label htmlFor="legal_notes" className="text-slate-300">Parecer e Observações</Label>
+              <textarea
+                id="legal_notes"
+                name="legal_notes"
+                rows={4}
+                defaultValue={initialData?.legal_notes || ""}
+                placeholder="Exul: Proprietário possui processo trabalhista sem risco imediato de penhora..."
+                className="w-full h-[calc(100%-24px)] min-h-[100px] p-3 rounded-lg border border-slate-700 bg-slate-800/50 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* Bloco: Veredito Final Jurídico */}
+      <Card className="bg-slate-900 border-slate-800">
+        <CardContent className="pt-6 space-y-6">
+          <div className="space-y-2">
+            <Label className="text-slate-300 uppercase text-xs font-bold tracking-widest">Decisão do Departamento Jurídico</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="cursor-pointer group">
+                <input type="radio" name="recommendation" value="PROSSEGUIR" className="peer hidden" defaultChecked={initialData?.recommendation === "PROSSEGUIR"} />
+                <div className="p-4 rounded-xl border-2 border-slate-800 bg-slate-900 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 transition-all text-center">
+                  <span className="block text-lg font-bold text-slate-300 peer-checked:text-emerald-500 mb-1">✅ PROSSEGUIR</span>
+                  <span className="text-xs text-slate-500">Documentação Limpa</span>
+                </div>
+              </label>
+
+              <label className="cursor-pointer group">
+                <input type="radio" name="recommendation" value="RESSALVAS" className="peer hidden" defaultChecked={initialData?.recommendation === "RESSALVAS"} />
+                <div className="p-4 rounded-xl border-2 border-slate-800 bg-slate-900 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all text-center">
+                  <span className="block text-lg font-bold text-slate-300 peer-checked:text-amber-500 mb-1">⚠️ C/ RESSALVAS</span>
+                  <span className="text-xs text-slate-500">Exige Contrato Específico</span>
+                </div>
+              </label>
+
+              <label className="cursor-pointer group">
+                <input type="radio" name="recommendation" value="BLOQUEAR" className="peer hidden" defaultChecked={initialData?.recommendation === "BLOQUEAR"} />
+                <div className="p-4 rounded-xl border-2 border-slate-800 bg-slate-900 peer-checked:border-red-500 peer-checked:bg-red-500/10 transition-all text-center">
+                  <span className="block text-lg font-bold text-slate-300 peer-checked:text-red-500 mb-1">⛔ BLOQUEAR</span>
+                  <span className="text-xs text-slate-500">Risco Inaceitável</span>
+                </div>
+              </label>
             </div>
           </div>
 
-          {/* Recommendation */}
-          <div className="space-y-3 pt-4 border-t border-slate-800">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Parecer Jurídico</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <label className="cursor-pointer">
-                <input type="radio" name="recommendation" value="PROCEED" checked={recommendation === "PROCEED"} onChange={(e) => setRecommendation(e.target.value)} className="hidden peer" />
-                <div className={cn(
-                  "flex flex-col items-center justify-center p-4 rounded-xl border transition-all",
-                  recommendation === "PROCEED" ? "border-emerald-500 bg-emerald-500/10" : "border-slate-700 bg-slate-800/50 hover:bg-slate-800"
-                )}>
-                  <ShieldCheck className="w-6 h-6 text-emerald-500 mb-2" />
-                  <span className="text-[10px] font-bold text-white uppercase">Aprovar</span>
-                </div>
-              </label>
-              <label className="cursor-pointer">
-                <input type="radio" name="recommendation" value="PROCEED_WITH_RESERVATIONS" checked={recommendation === "PROCEED_WITH_RESERVATIONS"} onChange={(e) => setRecommendation(e.target.value)} className="hidden peer" />
-                <div className={cn(
-                  "flex flex-col items-center justify-center p-4 rounded-xl border transition-all",
-                  recommendation === "PROCEED_WITH_RESERVATIONS" ? "border-amber-500 bg-amber-500/10" : "border-slate-700 bg-slate-800/50 hover:bg-slate-800"
-                )}>
-                  <ShieldQuestion className="w-6 h-6 text-amber-500 mb-2" />
-                  <span className="text-[10px] font-bold text-white uppercase">Com Ressalvas</span>
-                </div>
-              </label>
-              <label className="cursor-pointer">
-                <input type="radio" name="recommendation" value="BLOCK" checked={recommendation === "BLOCK"} onChange={(e) => setRecommendation(e.target.value)} className="hidden peer" />
-                <div className={cn(
-                  "flex flex-col items-center justify-center p-4 rounded-xl border transition-all",
-                  recommendation === "BLOCK" ? "border-red-500 bg-red-500/10" : "border-slate-700 bg-slate-800/50 hover:bg-slate-800"
-                )}>
-                  <ShieldX className="w-6 h-6 text-red-500 mb-2" />
-                  <span className="text-[10px] font-bold text-white uppercase">Vetar</span>
-                </div>
-              </label>
-            </div>
-          </div>
+          {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded text-sm">{error}</div>}
+          {success && <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded text-sm flex items-center gap-2"><CheckCircle2 className="w-4 h-4"/> Análise Jurídica salva com sucesso! Lead liberado para captação física.</div>}
 
-          {/* Notes */}
-          <div className="space-y-2 pt-4 border-t border-slate-800">
-            <Label className="text-slate-300">Observações Jurídicas</Label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Descreva riscos identificados, pendências documentais ou condições para prosseguir..."
-              className="w-full p-3 rounded-lg border border-slate-700 bg-slate-800 text-white text-sm focus:ring-2 focus:ring-violet-500"
-            />
+          <div className="pt-4 border-t border-slate-800 flex justify-end">
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[200px]">
+              {loading ? "Salvando..." : "Emitir Parecer Jurídico"}
+            </Button>
           </div>
-
-          {/* Veto Warning */}
-          {recommendation === "BLOCK" && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
-              <XOctagon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-red-400">Atenção: VETO Jurídico</p>
-                <p className="text-xs text-red-300/70 mt-1 leading-relaxed">
-                  Esta ação bloqueará o ativo e mudará o status para REJEITADO. O processo será encerrado permanentemente.
-                </p>
-              </div>
-            </div>
-          )}
         </CardContent>
-        <CardFooter className="flex justify-end gap-3 border-t border-slate-800 pt-6">
-          <Button type="button" variant="ghost" onClick={onCancel} className="text-slate-400 hover:text-white">
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            className={cn(
-              "px-10 h-11 font-bold text-white",
-              recommendation === "BLOCK"
-                ? "bg-red-600 hover:bg-red-500"
-                : "bg-violet-600 hover:bg-violet-500"
-            )}
-            disabled={loading}
-          >
-            {loading ? "Processando..." : recommendation === "BLOCK" ? "Confirmar Veto" : "Emitir Parecer"}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+      </Card>
+    </form>
   );
 }

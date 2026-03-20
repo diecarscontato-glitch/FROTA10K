@@ -134,9 +134,10 @@ model Lead {
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
-  assets   Asset[]
-  tasks    Task[]
-  analyses Analysis[]
+  assets           Asset[]
+  tasks            Task[]
+  analyses         Analysis[]
+  legal_analysis   LegalAnalysis?
 }
 
 model Asset {
@@ -250,20 +251,23 @@ model DestinationDecision {
 
 model LegalAnalysis {
   id              String  @id @default(uuid())
-  asset_id        String  @unique
-  asset           Asset   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  asset_id        String? @unique
+  asset           Asset?  @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  lead_id         String? @unique
+  lead            Lead?   @relation(fields: [lead_id], references: [id], onDelete: Cascade)
   analyst_user_id String?
   analyst         User?   @relation(fields: [analyst_user_id], references: [id])
 
   // Checklist
-  criminal_records_checked Boolean @default(false)
-  civil_lawsuits_checked   Boolean @default(false)
+  criminal_records_checked     Boolean @default(false)
+  civil_lawsuits_checked       Boolean @default(false)
   vehicle_restrictions_checked Boolean @default(false)
-  cnh_status_checked       Boolean @default(false)
+  cnh_status_checked           Boolean @default(false)
+  renajud_checked              Boolean @default(false) // Added popular Brazilian block check
   
-  risk_level      String?  // LOW, MEDIUM, HIGH, IMPEDIMENT
+  risk_level      String?  // BAIXO, MEDIO, ALTO, IMPEDIMENTO
   legal_notes     String?
-  recommendation  String?  // PROCEED, PROCEED_WITH_RESERVATIONS, BLOCK
+  recommendation  String?  // PROSSEGUIR, RESSALVAS, BLOQUEAR
   
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt

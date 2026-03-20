@@ -31,6 +31,7 @@ export const dynamic = "force-dynamic";
 import { getStatusColorClass, getStatusLabel } from "@/lib/constants/lead-stages";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnalysisForm } from "@/components/analysis-form";
+import { LegalAnalysisForm } from "@/components/legal-analysis-form";
 import { db } from "@/lib/db";
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
@@ -41,6 +42,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   }
 
   const analysis = await db.analysis.findFirst({
+    where: { lead_id: lead.id }
+  });
+
+  const legalAnalysis = await db.legalAnalysis.findFirst({
     where: { lead_id: lead.id }
   });
 
@@ -69,7 +74,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         <TabsList className="bg-slate-900 border border-slate-800 p-1">
           <TabsTrigger value="resumo" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">Resumo do Lead</TabsTrigger>
           <TabsTrigger value="analise" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">Mesa de Análise</TabsTrigger>
-          <TabsTrigger value="documentacao" disabled className="text-slate-600">Documentação</TabsTrigger>
+          <TabsTrigger value="documentacao" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">Documentação (Jurídico)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-6 mt-0">
@@ -210,6 +215,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
         <TabsContent value="analise" className="mt-0">
           <AnalysisForm lead={lead} initialAnalysis={analysis} />
+        </TabsContent>
+
+        <TabsContent value="documentacao" className="mt-0">
+          <LegalAnalysisForm lead={lead} initialData={legalAnalysis} />
         </TabsContent>
       </Tabs>
     </div>

@@ -21,6 +21,7 @@ import {
   CreditCard,
   HelpCircle,
   Wallet,
+  Bot
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -28,6 +29,7 @@ const sidebarLinks = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Leads", icon: Users, href: "/leads" },
   { label: "Ativos", icon: Car, href: "/assets" },
+  { label: "DIECAR IA (SDR)", icon: Bot, href: "https://chatgpt.com/g/g-68f6b1d9c1b08191accae96d2060a8e8-diecar-s-ia", external: true },
   { label: "Marketplace", icon: Megaphone, href: "/marketplace" },
   { label: "Negociações", icon: MessageSquare, href: "/negotiations" },
   { label: "Tarefas", icon: CheckSquare, href: "/tasks" },
@@ -60,6 +62,8 @@ export function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
+              target={link.external ? "_blank" : undefined}
+              rel={link.external ? "noopener noreferrer" : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isActive
@@ -69,6 +73,7 @@ export function Sidebar() {
             >
               <Icon className="w-4 h-4" />
               {link.label}
+              {link.external && <span className="ml-auto text-[10px] uppercase tracking-widest text-blue-500/70 border border-blue-500/20 px-1 rounded">Beta</span>}
             </Link>
           );
         })}
