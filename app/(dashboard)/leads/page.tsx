@@ -23,30 +23,10 @@ import { ImportLeadsModal } from "@/components/import-leads-modal";
 import { EditLeadModal } from "@/components/edit-lead-modal";
 import Link from "next/link";
 
+import { getStatusColorClass, getStatusLabel } from "@/lib/constants/lead-stages";
+
 export default async function LeadsPage() {
   const leads = await getLeads();
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "NEW":
-        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-      case "CONTACTED":
-        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
-      case "QUALIFIED":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-      case "DISCARDED":
-        return "bg-red-500/10 text-red-500 border-red-500/20";
-      default:
-        return "bg-slate-500/10 text-slate-500 border-slate-500/20";
-    }
-  };
-
-  const statusMap: Record<string, string> = {
-    NEW: "Novo",
-    CONTACTED: "Contatado",
-    QUALIFIED: "Qualificado",
-    DISCARDED: "Descartado",
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -158,9 +138,9 @@ export default async function LeadsPage() {
                     <TableCell>
                        <span className={cn(
                         "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
-                        getStatusBadge(lead.status)
+                        getStatusColorClass(lead.status)
                       )}>
-                        {statusMap[lead.status] || lead.status}
+                        {getStatusLabel(lead.status)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">

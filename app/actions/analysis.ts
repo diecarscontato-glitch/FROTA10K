@@ -4,29 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export async function createAnalysis(data: {
-  asset_id: string;
-  structural_score?: number;
-  engine_score?: number;
-  paint_score?: number;
-  interior_score?: number;
-  general_notes?: string;
-  
-  // Financial Analysis Fields
-  total_debt_estimated?: number;
-  fipe_comparison_pct?: number;
-  market_comparison_pct?: number;
-  rental_potential?: number;
-  estimated_rent?: number;
-  monthly_margin?: number;
-  vacancy_risk?: string;
-  operational_cost?: number;
-  bank_profile?: string;
-  
-  recommendation?: string;
-  verdict?: string; // APPROVED, NEGOTIATE, REFUSED
-  ready_for_committee?: boolean;
-}) {
+export async function saveAnalysis(data: any) {
   const session = await auth();
   const userData = session?.user as { id: string, accountId: string } | undefined;
 
@@ -34,63 +12,69 @@ export async function createAnalysis(data: {
     throw new Error("Não autorizado");
   }
 
-  const analysis = await db.analysis.create({
-    data: {
-      ...data,
-      analyst_user_id: userData.id,
-    },
+  // 1. Save or Update Analysis
+  const existingAnalysis = await db.analysis.findFirst({
+    where: { lead_id: data.lead_id, asset: { account_id: userData.accountId } } // We check asset account or just use lead owner
+  });
+  
+  // Actually, we linked analysis to lead_id now, so we can just look up by lead_id
+  const lead = await db.lead.findUnique({
+    where: { id: data.lead_id, account_id: userData.accountId }
   });
 
-  // Update asset status based on verdict or progress
-  let newStatus = "FINANCIAL_ANALYSIS";
-  if (data.verdict === "APPROVED") newStatus = "APPROVED";
-  if (data.verdict === "REFUSED") newStatus = "REJECTED";
-  if (data.verdict === "NEGOTIATE") newStatus = "NEGOTIATION";
+  if (!lead) {
+    throw new Error("Lead não encontrado");
+  }
 
-  // Update asset status to ANALYSIS
-  await db.asset.update({
-    where: { id: data.asset_id },
-    data: { status: newStatus },
+  const analysisRecord = await db.analysis.findFirst({
+    where: { lead_id: data.lead_id }
   });
 
-  revalidatePath(`/assets/${data.asset_id}`);
+  const payload = {
+    lead_id: data.lead_id,
+    analyst_user_id: userData.id,
+    fipe_value: data.fipe_value,
+    market_value: data.market_value,
+    difference_fipe: data.difference_fipe,
+    difference_market: data.difference_market,
+    estimated_rent: data.estimated_rent,
+    bank_profile: data.bank_profile,
+    recommendation: data.recommendation,
+    verdict: data.verdict,
+    ready_for_committee: true, // Auto-flag
+  };
+
+  let analysis;
+  if (analysisRecord) {
+    analysis = await db.analysis.update({
+      where: { id: analysisRecord.id },
+      data: payload,
+    });
+  } else {
+    analysis = await db.analysis.create({
+      data: payload,
+    });
+  }
+
+  // 2. Automate Lead Status based on Verdict
+  let newStatus = lead.status;
+  if (data.verdict === "APROVADO") {
+    newStatus = "APPROVED";
+  } else if (data.verdict === "NEGOCIAR") {
+    newStatus = "NEGOTIATING";
+  } else if (data.verdict === "RECUSADO") {
+    newStatus = "DISCARDED";
+  }
+
+  if (newStatus !== lead.status) {
+    await db.lead.update({
+      where: { id: data.lead_id },
+      data: { status: newStatus }
+    });
+  }
+
+  revalidatePath(`/leads/${data.lead_id}`);
+  revalidatePath("/leads");
+  
   return analysis;
-}
-
-export async function submitDecision(data: {
-  asset_id: string;
-  decision: "AGIO_SALE" | "DIRECT_REPASSE" | "RENTAL_FLEET" | "DISCARD";
-  justification: string;
-  target_value: number;
-}) {
-  const session = await auth();
-  const userData = session?.user as { id: string, accountId: string } | undefined;
-
-  if (!userData?.accountId) {
-    throw new Error("Não autorizado");
-  }
-
-  const destination = await db.destinationDecision.create({
-    data: {
-      asset_id: data.asset_id,
-      decided_by_user_id: userData.id,
-      decision: data.decision,
-      justification: data.justification,
-      target_value: data.target_value,
-      decided_at: new Date(),
-    },
-  });
-
-  // Map decision to Asset Status
-  let newStatus = "MARKETPLACE";
-  if (data.decision === "DISCARD") newStatus = "SOLD";
-
-  await db.asset.update({
-    where: { id: data.asset_id },
-    data: { status: newStatus },
-  });
-
-  revalidatePath(`/assets/${data.asset_id}`);
-  revalidatePath("/dashboard");
-  return destination;
 }

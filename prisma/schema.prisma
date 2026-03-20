@@ -134,8 +134,9 @@ model Lead {
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
-  assets Asset[]
-  tasks  Task[]
+  assets   Asset[]
+  tasks    Task[]
+  analyses Analysis[]
 }
 
 model Asset {
@@ -199,8 +200,10 @@ model Financing {
 
 model Analysis {
   id              String  @id @default(uuid())
-  asset_id        String
-  asset           Asset   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  asset_id        String?
+  asset           Asset?   @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  lead_id         String?
+  lead            Lead?    @relation(fields: [lead_id], references: [id], onDelete: Cascade)
   analyst_user_id String?
   analyst         User?   @relation(fields: [analyst_user_id], references: [id])
 
@@ -212,8 +215,10 @@ model Analysis {
 
   // Financial Analysis Fields
   total_debt_estimated Float?
-  fipe_comparison_pct  Float?
-  market_comparison_pct Float?
+  fipe_value           Float?
+  market_value         Float?
+  difference_fipe      Float?
+  difference_market    Float?
   rental_potential     Float?
   estimated_rent       Float?
   monthly_margin       Float?
@@ -222,7 +227,7 @@ model Analysis {
   bank_profile         String? // NEGOCIAVEL, RUIM, AGRESSIVO, COOPERATIVA
   
   recommendation      String?
-  verdict             String?  // APPROVED, NEGOTIATE, REFUSED
+  verdict             String?  // APROVADO, NEGOCIAR, RECUSADO
   ready_for_committee Boolean  @default(false)
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
