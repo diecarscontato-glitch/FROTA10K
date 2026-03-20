@@ -67,6 +67,10 @@ export async function createLead(data: {
     throw new Error("Não autorizado");
   }
 
+  if (!data.name) {
+    throw new Error("O nome do lead é obrigatório.");
+  }
+
   const lead = await db.lead.create({
     data: {
       account_id: userData.accountId,

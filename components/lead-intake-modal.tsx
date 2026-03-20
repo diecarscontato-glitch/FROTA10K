@@ -34,6 +34,7 @@ export function LeadIntakeModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState("personal");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,12 +72,20 @@ export function LeadIntakeModal() {
       urgency: formData.get("urgency") as string,
     };
 
+    if (!data.name || !data.phone || !data.source) {
+      setError("Preencha Nome, WhatsApp e Canal de Origem.");
+      setActiveTab("personal");
+      setLoading(false);
+      return;
+    }
+
     try {
       await createLead(data);
       setSuccess(true);
       setTimeout(() => {
         setIsOpen(false);
         setSuccess(false);
+        setActiveTab("personal");
       }, 1500);
     } catch (err: any) {
       setError(err.message || "Erro ao registrar lead");
@@ -128,14 +137,14 @@ export function LeadIntakeModal() {
                   </div>
                 )}
                 
-                <Tabs defaultValue="personal" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-3 bg-slate-800">
                     <TabsTrigger value="personal" className="text-xs">Dados Pessoais</TabsTrigger>
                     <TabsTrigger value="vehicle" className="text-xs">O Veículo</TabsTrigger>
                     <TabsTrigger value="financial" className="text-xs">Financeiro</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="personal" className="space-y-4 pt-4">
+                  <TabsContent value="personal" forceMount className="data-[state=inactive]:hidden space-y-4 pt-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="name" className="text-slate-300">Nome do Proponente</Label>
@@ -146,7 +155,6 @@ export function LeadIntakeModal() {
                             name="name"
                             placeholder="Nome completo do cliente"
                             className="pl-10 bg-slate-800/50 border-slate-700 text-white"
-                            required
                           />
                         </div>
                       </div>
@@ -160,7 +168,6 @@ export function LeadIntakeModal() {
                             name="phone"
                             placeholder="(00) 00000-0000"
                             className="pl-10 bg-slate-800/50 border-slate-700 text-white"
-                            required
                           />
                         </div>
                       </div>
@@ -210,7 +217,6 @@ export function LeadIntakeModal() {
                             id="source"
                             name="source"
                             className="w-full h-10 pl-10 pr-3 rounded-md border border-input bg-slate-800/50 border-slate-700 text-white text-sm appearance-none focus:ring-2 focus:ring-blue-500"
-                            required
                           >
                             <option value="Manual">Manual</option>
                             <option value="Indicação">Indicação</option>
@@ -224,7 +230,7 @@ export function LeadIntakeModal() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="vehicle" className="space-y-4 pt-4">
+                  <TabsContent value="vehicle" forceMount className="data-[state=inactive]:hidden space-y-4 pt-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="vehicle_model" className="text-slate-300 text-xs uppercase font-bold tracking-tight">Modelo do Veículo</Label>
@@ -309,7 +315,7 @@ export function LeadIntakeModal() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="financial" className="space-y-4 pt-4">
+                  <TabsContent value="financial" forceMount className="data-[state=inactive]:hidden space-y-4 pt-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="finance_bank" className="text-slate-300 text-xs uppercase font-bold tracking-tight">Banco / Financeira</Label>
