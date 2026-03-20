@@ -20,6 +20,8 @@ import { Filter, Search, Phone, MapPin, User as UserIcon, ChevronRight } from "l
 import { cn } from "@/lib/utils";
 import { LeadIntakeModal } from "@/components/lead-intake-modal";
 import { ImportLeadsModal } from "@/components/import-leads-modal";
+import { EditLeadModal } from "@/components/edit-lead-modal";
+import Link from "next/link";
 
 export default async function LeadsPage() {
   const leads = await getLeads();
@@ -162,9 +164,14 @@ export default async function LeadsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-slate-800">
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <EditLeadModal lead={lead} isIcon />
+                        <Link href={`/leads/${lead.id}`}>
+                          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-slate-800" title="Ver Detalhes">
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

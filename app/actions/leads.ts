@@ -136,3 +136,30 @@ export async function getLeadById(id: string) {
 
   return lead;
 }
+
+export async function updateLead(leadId: string, data: any) {
+  const session = await auth();
+  const userData = session?.user as { id: string, accountId: string } | undefined;
+
+  if (!userData?.accountId) {
+    throw new Error("Não autorizado");
+  }
+
+  if (!data.name) {
+    throw new Error("O nome do lead é obrigatório.");
+  }
+
+  const lead = await db.lead.update({
+    where: {
+      id: leadId,
+      account_id: userData.accountId,
+    },
+    data: {
+      ...data,
+    },
+  });
+
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  return lead;
+}

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import { EditLeadModal } from "@/components/edit-lead-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -64,9 +65,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           Voltar para Leads
         </Link>
         <div className="flex gap-3">
-          <Button variant="outline" className="border-slate-800 bg-slate-900 text-slate-300">
-            Editar Lead
-          </Button>
+          <EditLeadModal lead={lead} />
           <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             Nova Tarefa
           </Button>
