@@ -2,10 +2,8 @@
 
 import React, { useState } from "react";
 import { AnalysisForm } from "./analysis-form";
-import { DecisionForm } from "./decision-form";
 import { PublicationForm } from "./publication-form";
 import { LegalAnalysisForm } from "./legal-analysis-form";
-import { ReceptionChecklistForm } from "./reception-checklist-form";
 import { Button } from "@/components/ui/button";
 import { 
   ClipboardCheck, 
@@ -26,6 +24,27 @@ interface AssetActionManagerProps {
 
 type ViewState = "NONE" | "ANALYSIS" | "DECISION" | "PUBLISH" | "LEGAL" | "RECEPTION";
 
+// Modal wrapper
+const Modal = ({ children, onClose, maxW = "max-w-2xl" }: { children: React.ReactNode; onClose: () => void; maxW?: string }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} />
+    <div className={cn("w-full relative z-10 max-h-[90vh] overflow-y-auto", maxW)}>{children}</div>
+  </div>
+);
+
+const MaintenanceMessage = ({ onClose }: { onClose: () => void }) => (
+  <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl text-center">
+    <AlertCircle className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+    <h3 className="text-xl font-bold text-white mb-2">Ação Movida para o Painel do Lead</h3>
+    <p className="text-slate-400 mb-6">
+      Este formulário agora faz parte do pipeline principal. Acesse o Lead correspondente para prosseguir.
+    </p>
+    <Button onClick={onClose} className="bg-slate-800 hover:bg-slate-700 text-white">
+      Voltar
+    </Button>
+  </div>
+);
+
 export function AssetActionManager({ asset }: AssetActionManagerProps) {
   const [view, setView] = useState<ViewState>("NONE");
 
@@ -34,33 +53,25 @@ export function AssetActionManager({ asset }: AssetActionManagerProps) {
     window.location.reload();
   };
 
-  // Modal wrapper
-  const Modal = ({ children, maxW = "max-w-2xl" }: { children: React.ReactNode; maxW?: string }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setView("NONE")} />
-      <div className={cn("w-full relative z-10 max-h-[90vh] overflow-y-auto", maxW)}>{children}</div>
-    </div>
-  );
-
   if (view === "ANALYSIS") {
     return (
-      <Modal>
-        <AnalysisForm asset={asset} onSuccess={reload} onCancel={() => setView("NONE")} />
+      <Modal onClose={() => setView("NONE")}>
+        <AnalysisForm lead={{ id: asset.lead_id, assets: [asset] }} initialAnalysis={asset.analyses?.[0]} />
       </Modal>
     );
   }
 
-  if (view === "DECISION") {
+  if (view === "DECISION" || view === "RECEPTION") {
     return (
-      <Modal maxW="max-w-3xl">
-        <DecisionForm assetId={asset.id} onSuccess={reload} onCancel={() => setView("NONE")} />
+      <Modal maxW="max-w-md" onClose={() => setView("NONE")}>
+        <MaintenanceMessage onClose={() => setView("NONE")} />
       </Modal>
     );
   }
 
   if (view === "PUBLISH") {
     return (
-      <Modal>
+      <Modal onClose={() => setView("NONE")}>
         <PublicationForm asset={asset} onSuccess={reload} onCancel={() => setView("NONE")} />
       </Modal>
     );
@@ -68,16 +79,8 @@ export function AssetActionManager({ asset }: AssetActionManagerProps) {
 
   if (view === "LEGAL") {
     return (
-      <Modal maxW="max-w-2xl">
-        <LegalAnalysisForm asset={asset} onSuccess={reload} onCancel={() => setView("NONE")} />
-      </Modal>
-    );
-  }
-
-  if (view === "RECEPTION") {
-    return (
-      <Modal>
-        <ReceptionChecklistForm asset={asset} onSuccess={reload} onCancel={() => setView("NONE")} />
+      <Modal maxW="max-w-2xl" onClose={() => setView("NONE")}>
+        <LegalAnalysisForm lead={{ id: asset.lead_id, assets: [asset] }} initialData={asset.legal_analysis} />
       </Modal>
     );
   }
