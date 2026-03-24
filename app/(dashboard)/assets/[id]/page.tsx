@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { AssetActionManager } from "@/components/asset-action-manager";
-import { FinancialSheet } from "@/components/financial-sheet";
+
  
 export const dynamic = "force-dynamic";
 
@@ -239,7 +239,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
           )}
 
           {/* Reception Data Card */}
-          {asset.received_at && (
+          {asset.reception_control?.received_at && (
             <Card className="bg-slate-900/50 border-teal-500/20">
               <CardHeader>
                 <CardTitle className="text-lg text-white flex items-center gap-2">
@@ -251,31 +251,28 @@ export default async function AssetDetailPage({ params }: { params: { id: string
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <p className="text-[10px] text-slate-500 uppercase font-bold">Recebido em</p>
-                    <p className="text-sm text-white font-medium">{new Date(asset.received_at).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-sm text-white font-medium">{new Date(asset.reception_control.received_at).toLocaleDateString('pt-BR')}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] text-slate-500 uppercase font-bold">KM Recepção</p>
-                    <p className="text-sm text-white font-medium font-mono">{asset.reception_km?.toLocaleString() || "---"}</p>
+                    <p className="text-sm text-white font-medium font-mono">{asset.reception_control.reception_km?.toLocaleString() || "---"}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Radio className={cn("w-4 h-4", asset.tracker_installed ? "text-emerald-500" : "text-red-400")} />
+                    <Radio className={cn("w-4 h-4", asset.reception_control.tracker_installed ? "text-emerald-500" : "text-red-400")} />
                     <span className="text-xs text-slate-300">Rastreador</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className={cn("w-4 h-4", asset.insurance_active ? "text-emerald-500" : "text-red-400")} />
+                    <ShieldCheck className={cn("w-4 h-4", asset.reception_control.insurance_active ? "text-emerald-500" : "text-red-400")} />
                     <span className="text-xs text-slate-300">Seguro</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Sparkles className={cn("w-4 h-4", asset.hygiene_done ? "text-emerald-500" : "text-red-400")} />
+                    <Sparkles className={cn("w-4 h-4", asset.reception_control.hygiene_done ? "text-emerald-500" : "text-red-400")} />
                     <span className="text-xs text-slate-300">Higienizado</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
-
-          {/* Financial Sheet */}
-          <FinancialSheet assetId={asset.id} />
         </div>
 
         {/* Right Column: Decisions, Financing & Lead */}

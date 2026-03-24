@@ -115,6 +115,7 @@ export async function getAssetById(id: string) {
       legal_analysis: true,
       documents: true,
       publications: true,
+      reception_control: true,
     },
   });
 
